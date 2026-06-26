@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roket Keberuntungan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { 
+                colors: { utama:'#F5B700', gelap:'#121214', abu:'#1e1e24', abuMuda:'#2a2a30', hijau:'#22C55E', merah:'#EF4444', biru:'#3B82F6', hijauLembut:'#10b981', perak:'#C0C0C0' },
+                fontFamily: { inter: ['Inter', 'sans-serif'] }
+            } }
+        }
+    </script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; }
+        html, body { width:100%; height:100%; overflow-x:hidden; background:#121214; color:#fff; }
+        .wadah { width:100%; max-width:420px; margin:0 auto; padding:16px; }
+        
+        .layar-masuk { position:fixed; inset:0; background:#121214; z-index:999; display:flex; align-items:center; justify-content:center; padding:24px; transition: all 0.4s ease; }
+        .layar-masuk.sembunyi { opacity:0; visibility:hidden; pointer-events:none; transform:scale(0.95); }
+        .kotak-masuk { width:100%; max-width:380px; background:#1e1e24; border-radius:20px; padding:36px 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border:1px solid #2a2a30; }
+        .judul-masuk { text-align:center; margin-bottom:32px; }
+        .judul-masuk h2 { font-size:clamp(26px,7vw,34px); font-weight:700; color:#fff; margin-top:12px; }
+        .grup-input { margin-bottom:22px; }
+        .grup-input label { display:block; font-size:14px; color:#b0b0c0; margin-bottom:8px; font-weight:500; }
+        .kotak-input { width:100%; padding:14px 16px; background:#222228; border:1px solid #33333a; border-radius:12px; color:#fff; outline:none; font-size:16px; transition:0.25s; }
+        .kotak-input:focus { border-color:#F5B700; box-shadow:0 0 0 3px rgba(245,183,0,0.15); background:#282830; }
+        .tombol-masuk { width:100%; padding:15px; border:none; border-radius:12px; background:linear-gradient(135deg,#F5B700,#ffcc00); color:#1a1a20; font-weight:700; font-size:17px; cursor:pointer; transition:0.25s; box-shadow: 0 6px 16px rgba(245,183,0.25); margin:8px 0; }
+        .tombol-masuk:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+        .tombol-masuk:active:not(:disabled) { transform:scale(0.97); }
+        .tombol-daftar { background:linear-gradient(135deg,#3B82F6,#60a5fa); color:#fff; }
+        .pesan-error { margin-top:12px; text-align:center; font-size:14px; min-height:20px; }
+        .pemisah { display:flex; align-items:center; justify-content:center; margin:16px 0; color:#888; font-size:14px; }
+        .pemisah::before,.pemisah::after { content:''; flex:1; height:1px; background:#2a2a30; margin:0 12px; }
+
+        .halaman { display:none; width:100%; min-height:100vh; overflow-y:auto; }
+        .halaman.aktif { display:block; }
+        .tombol { border:none; outline:none; cursor:pointer; transition:0.2s; }
+        .tombol:active:not(:disabled) { transform:scale(0.96); }
+        .tombol:disabled { cursor:not-allowed; opacity:0.8; }
+        
+        .roket-area { height:52vh; position:relative; overflow:hidden; background:radial-gradient(circle at top,#1e1e24,#121214); border-radius:16px; margin:16px 0; }
+        .roket { position:absolute; left:50%; transform:translateX(-50%); bottom:20px; font-size:72px; transition: transform 0.05s ease-out; z-index:2; }
+        .ledak { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:110px; display:none; z-index:3; }
+        .angka-kali { position:absolute; top:20px; left:50%; transform:translateX(-50%); font-size:36px; font-weight:bold; color:#F5B700; z-index:2; }
+        .hitungan { position:absolute; inset:0; background:rgba(0,0,0,0.88); display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:16px; z-index:3; }
+        .status-ronde { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:12px; color:#999; z-index:2; }
+        
+        .riwayat-kali { display:flex; gap:6px; overflow-x:auto; padding:8px 0; }
+        .riwayat-kali span { padding:4px 8px; border-radius:6px; font-size:13px; font-weight:500; }
+        .merah { background:#2b1515; color:#ff9494; }
+        .biru { background:#1a2435; color:#93c5fd; }
+        .hijau { background:#152b1f; color:#86efac; }
+        
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:99; display:none; align-items:center; justify-content:center; }
+        .modal.buka { display:flex; }
+        .modal-kotak { background:#1e1e24; border-radius:14px; width:92%; max-width:380px; padding:22px; border:1px solid #2a2a30; }
+        
+        .hasil-notif { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:18px 30px; border-radius:12px; font-size:20px; font-weight:bold; z-index:9999; min-width:260px; text-align:center; }
+        .hasil-kalah { background:#2b1515; color:#ff6b6b; border:1px solid rgba(255,77,79,0.25); }
+        .hasil-menang { background:#152b1f; color:#36d399; border:1px solid rgba(54,211,153,0.25); }
+        .kedip-merah { animation: kedipMerah 0.8s ease; }
+        .kedip-hijau { animation: kedipHijau 0.8s ease; }
+        @keyframes kedipMerah { 0%,100%{color:#fff;} 50%{color:#ff6b6b;} }
+        @keyframes kedipHijau { 0%,100%{color:#fff;} 50%{color:#36d399;} }
+        
+        .notif-taruhan { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#22C55E; color:#fff; padding:12px 24px; border-radius:8px; font-weight:600; font-size:15px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.3); animation:turunMasuk 0.3s ease forwards; }
+        @keyframes turunMasuk { from { opacity:0; top:0; } to { opacity:1; top:20px; } }
+        @keyframes naikHilang { from { opacity:1; top:20px; } to { opacity:0; top:0; } }
+        
+        .status-pending { color:#F5B700; font-size:11px; margin-left:6px; font-weight:500; }
+        .status-sukses { color:#22c55e; font-weight:500; }
+        .status-ditolak { color:#ef4444; font-weight:500; }
+        .kode-ref { font-size:11px; color:#888; font-family:monospace; }
+
+        .kartu-profil { background:#1a1a1e; border-radius:20px; padding:24px; position:relative; overflow:hidden; border:1px solid #2a2a30; }
+        .pola-latar { position:absolute; inset:0; opacity:0.15; background-image:url('https://cdn-icons-png.flaticon.com/512/1033/1033401.png'); background-size:80px; background-repeat:space; }
+        .foto-profil { width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#ff6b6b,#ff4757); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:bold; margin:0 auto 12px; position:relative; z-index:1; }
+        .nama-profil { text-align:center; font-size:20px; font-weight:600; margin-bottom:16px; position:relative; z-index:1; }
+        .baris-saldo { display:flex; justify-content:center; gap:16px; margin-bottom:20px; position:relative; z-index:1; }
+        .kotak-saldo { text-align:center; }
+        .nilai-saldo { font-size:18px; font-weight:700; color:#86efac; }
+        .nilai-vip { font-size:18px; font-weight:700; color:#93c5fd; }
+        .label-saldo { font-size:12px; color:#888; margin-top:2px; }
+        .baris-tombol { display:flex; gap:12px; position:relative; z-index:1; }
+        .tombol-deposit { flex:1; padding:12px; border-radius:10px; background:#2a2a30; color:#fff; font-weight:600; font-size:15px; }
+        .tombol-tarik { flex:1; padding:12px; border-radius:10px; background:#3B82F6; color:#fff; font-weight:600; font-size:15px; }
+        .judul-riwayat { font-size:16px; font-weight:600; margin:24px 0 12px; display:flex; align-items:center; gap:6px; }
+        .item-transaksi { background:#1a1a1e; border-radius:10px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #2a2a30; }
+        .info-kiri { display:flex; flex-direction:column; gap:2px; }
+        .nominal-trans { font-weight:600; font-size:15px; }
+        .waktu-trans { font-size:12px; color:#888; }
+        .info-kanan { text-align:right; }
+
+        .baris-taruhan { transition: all 0.3s ease; }
+        .kalah-merah { background:#3a1a1a !important; color:#ff9494 !important; }
+
+        .tab-pilihan { display:flex; gap:8px; margin-bottom:16px; }
+        .tab-pilihan button { flex:1; padding:10px; border-radius:8px; background:#2a2a30; color:#aaa; font-weight:500; }
+        .tab-pilihan button.aktif { background:#F5B700; color:#1a1a20; font-weight:600; }
+        .area-qr { display:none; text-align:center; margin-top:12px; }
+        .area-qr.terbuka { display:block; }
+
+        .tombol-wa { background:#25D366; color:#fff; }
+
+        /* Tombol Bantuan Mengambang */
+        .tombol-bantuan {
+            position: fixed;
+            z-index: 99999;
+            width: 48px;
+            height: 48px;
+            background: #2563eb;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            user-select: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.1);
+            top: 120px;
+            right: 16px;
+        }
+        .tombol-bantuan:active { cursor: grabbing; }
+        .tombol-bantuan.sembunyi { display: none !important; }
+
+        /* Panel Dukungan */
+        .panel-bantuan {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            background: rgba(10,10,15,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .panel-bantuan.buka { display: flex; }
+        .kotak-bantuan {
+            width: 100%;
+            max-width: 420px;
+            background: linear-gradient(160deg, #1e293b, #0f172a);
+            border-radius: 20px;
+            padding: 22px;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        .judul-bantuan {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .judul-bantuan span:first-child { font-size: 22px; }
+        .judul-bantuan h3 { font-size: 18px; font-weight: 600; margin: 0; }
+
+        .status-kotak {
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .status-offline { background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.25); color: #fbbf24; }
+        .status-online { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.25); color: #86efac; }
+
+        .kolom-kontak { margin-bottom: 20px; }
+        .label-kolom { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 10px; display: block; }
+        .baris-kontak {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .icon-kontak { font-size: 24px; }
+        .info-kontak { flex: 1; }
+        .nama-kontak { font-size: 14px; font-weight: 500; margin: 0; }
+        .ket-kontak { font-size: 12px; color: #94a3b8; margin: 2px 0 0; }
+        .label-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+        .label-offline { background: rgba(234, 179, 8, 0.2); color: #fbbf24; }
+        .label-online { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+        .tombol-chat {
+            font-size: 13px;
+            font-weight: 600;
+            color: #3b82f6;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+        .tombol-chat:hover { background: rgba(59, 130, 246, 0.1); }
+
+        .jadwal-operasi {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        .baris-jadwal {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+        .baris-jadwal span:first-child { color: #94a3b8; font-size: 13px; }
+        .baris-jadwal span:last-child { font-size: 18px; font-weight: 700; }
+        .pesan-jadwal {
+            font-size: 12px;
+            color: #fbbf24;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tombol-tutup-bantuan {
+            width: 100%;
+            margin-top: 16px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(51, 65, 85, 0.6);
+            color: #cbd5e1;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Tombol & Panel Bantuan -->
+<div id="tombolBantuan" class="tombol-bantuan">
+    <span style="color: white; font-size: 22px;">🎧</span>
+</div>
+
+<div id="panelBantuan" class="panel-bantuan">
+    <div class="kotak-bantuan">
+        <div class="judul-bantuan">
+            <span>🎧</span>
+            <h3>Ada yang Bisa Kami Bantu?</h3>
+        </div>
+
+        <div id="statusKotak" class="status-kotak status-offline">
+            <span>🌙</span>
+            <div>
+                <p style="margin:0; font-weight:600;">DI LUAR JAM OPERASIONAL</p>
+                <p style="margin:4px 0 0; font-size:12px;">Tim kami akan kembali aktif pukul 10:00 WIB. Silakan tinggalkan pesan, akan kami balas saat jam buka.</p>
+            </div>
+        </div>
+
+        <div class="kolom-kontak">
+            <span class="label-kolom">KANAL DUKUNGAN</span>
+            
+            <div class="baris-kontak">
+                <span class="icon-kontak">📲</span>
+                <div class="info-kontak">
+                    <p class="nama-kontak">CS Telegram</p>
+                    <p class="ket-kontak">Chat langsung dengan tim kami</p>
+                </div>
+                <span class="label-status label-offline">OFFLINE</span>
+                <button class="tombol-chat" onclick="bukaTelegramAdmin()">Chat Sekarang →</button>
+            </div>
+
+            <div class="baris-kontak">
+                <span class="icon-kontak">💬</span>
+                <div class="info-kontak">
+                    <p class="nama-kontak">CS Whatsapp</p>
+                    <p class="ket-kontak">Pengumuman & info terbaru</p>
+                </div>
+                <span class="label-status label-offline">OFFLINE</span>
+                <button class="tombol-chat" onclick="bukaWaAdmin()">Chat Sekarang →</button>
+            </div>
+        </div>
+
+        <div class="jadwal-operasi">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span class="label-kolom">JAM OPERASIONAL</span>
+                <span id="statusTim" class="label-status label-offline">OFFLINE</span>
+            </div>
+            <div class="baris-jadwal">
+                <span>BUKA</span>
+                <span>10:00 WIB</span>
+            </div>
+            <div class="baris-jadwal">
+                <span>TUTUP</span>
+                <span>19:00 WIB</span>
+            </div>
+            <p id="pesanJadwal" class="pesan-jadwal">
+                <span>🌙</span> Saat ini di luar jam operasional. Pesan Anda akan dibalas pukul 10:00 WIB.
+            </p>
+        </div>
+
+        <button class="tombol-tutup-bantuan" onclick="tutupPanelBantuan()">Tutup & Sembunyikan Sementara</button>
+    </div>
+</div>
+
+<!-- LAYAR MASUK & DAFTAR -->
+<div id="layarMasuk" class="layar-masuk">
+    <div class="kotak-masuk">
+        <div class="judul-masuk">
+            <span class="text-[42px]">🚀</span>
+            <h2>Roket Keberuntungan</h2>
+        </div>
+        <div id="formMasuk">
+            <div class="grup-input">
+                <label for="noHpMasuk">Nomor HP Terdaftar</label>
+                <input type="tel" id="noHpMasuk" class="kotak-input" placeholder="Contoh: 08123456789" maxlength="13">
+            </div>
+            <div id="pesanErrorMasuk" class="pesan-error"></div>
+            <button id="tombolMasuk" class="tombol-masuk">Masuk ke Akun</button>
+            <div class="pemisah">Belum punya akun?</div>
+            <button type="button" class="tombol-masuk tombol-daftar" onclick="tampilkanFormDaftar()">Daftar Akun Baru</button>
+        </div>
+        <div id="formDaftar" style="display:none;">
+            <div class="grup-input">
+                <label for="noHpDaftar">Nomor HP</label>
+                <input type="tel" id="noHpDaftar" class="kotak-input" placeholder="Contoh: 08123456789" maxlength="13">
+            </div>
+            <div class="grup-input">
+                <label for="namaUserDaftar">Nama Lengkap</label>
+                <input type="text" id="namaUserDaftar" class="kotak-input" placeholder="Masukkan nama lengkap">
+            </div>
+            <div id="pesanErrorDaftar" class="pesan-error"></div>
+            <button id="tombolDaftar" class="tombol-masuk tombol-daftar">Daftar Sekarang</button>
+            <div class="pemisah">Sudah punya akun?</div>
+            <button type="button" class="tombol-masuk" onclick="tampilkanFormMasuk()">Kembali ke Masuk</button>
+        </div>
+    </div>
+</div>
+
+<!-- HALAMAN UTAMA -->
+<section id="halamanUtama" class="halaman aktif">
+    <div class="wadah">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
+            <div>
+                <p class="text-sm text-gray-300">Halo, <span id="namaTampil" class="font-semibold">-</span></p>
+                <p class="text-[clamp(22px,5vw,28px)] font-bold">Saldo: Rp <span id="saldoTampil">0</span></p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="bukaModal('deposit')" class="tombol px-4 py-2.5 rounded-lg bg-[#22C55E] text-white text-sm font-medium">Deposit</button>
+                <button onclick="bukaModal('tarik')" class="tombol px-4 py-2.5 rounded-lg bg-[#3B82F6] text-white text-sm font-medium">Tarik Saldo</button>
+                <button onclick="bukaHalaman('halamanProfil')" class="tombol px-4 py-2.5 rounded-lg bg-[#2a2a30] text-white text-sm font-medium">Profil</button>
+            </div>
+        </div>
+        <div class="riwayat-kali" id="riwayatPengali"></div>
+        <div class="roket-area">
+            <div class="hitungan" id="areaHitung">
+                <span class="text-sm text-gray-400 mb-2">SIAP-SIAP</span>
+                <span id="angkaHitung" class="text-6xl font-bold">7</span>
+            </div>
+            <div class="angka-kali" id="angkaPengali">1.00x</div>
+            <div class="roket" id="roket">🚀</div>
+            <div class="ledak" id="ledak">💥</div>
+            <p class="status-ronde" id="statusRonde">Siap pasang taruhan</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-5">
+            <button onclick="bukaModalTaruhan()" id="tombolPasang" class="tombol py-3.5 rounded-lg bg-[#F5B700] text-black font-bold text-lg">Pasang Taruhan</button>
+            <button onclick="ambilKemenangan()" id="tombolAmbil" class="tombol py-3.5 rounded-lg bg-[#22C55E] text-white font-bold text-lg" style="display:none;">Ambil Sekarang</button>
+        </div>
+        <div class="p-4 rounded-lg bg-[#1e1e24] mb-5 border border-[#2a2a30]">
+            <label class="flex items-center gap-2 mb-3">
+                <input type="checkbox" id="aktifOtomatis">
+                <span class="text-sm font-medium">Aktif Taruhan Otomatis</span>
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Nominal (Rp)</label>
+                    <input type="number" id="nominalOtomatis" value="2000" min="2000" class="kotak-input">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Ambil Otomatis (x)</label>
+                    <input type="number" id="pengaliOtomatis" value="2.00" step="0.01" min="1.01" class="kotak-input">
+                </div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="p-3 rounded-lg bg-[#1e1e24] border border-[#2a2a30]">
+                <h4 class="text-sm font-semibold mb-2 border-b border-[#2a2a30] pb-1">Taruhan Pemain Lain</h4>
+                <div id="daftarPemainLain" class="space-y-1 text-sm"></div>
+            </div>
+            <div class="p-3 rounded-lg bg-[#1e1e24] border border-[#2a2a30]">
+                <h4 class="text-sm font-semibold mb-2 border-b border-[#2a2a30] pb-1">Taruhan Saya</h4>
+                <div id="taruhanSayaList" class="space-y-1 text-sm"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HALAMAN RIWAYAT -->
+<section id="halamanRiwayat" class="halaman">
+    <div class="wadah">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-xl font-bold">Riwayat Transaksi</h2>
+            <button onclick="bukaHalaman('halamanUtama')" class="tombol px-3 py-2 rounded-lg bg-[#2a2a30] text-sm">Kembali</button>
+        </div>
+        <div class="mb-5">
+            <h3 class="font-semibold mb-2 text-sm text-[#86efac]">📥 Riwayat Deposit</h3>
+            <div id="riwayatDeposit" class="space-y-2 text-sm"></div>
+        </div>
+        <div class="mb-5">
+            <h3 class="font-semibold mb-2 text-sm text-[#93c5fd]">📤 Riwayat Penarikan</h3>
+            <div id="riwayatPenarikan" class="space-y-2 text-sm"></div>
+        </div>
+    </div>
+</section>
+
+<!-- HALAMAN PROFIL -->
+<section id="halamanProfil" class="halaman">
+    <div class="wadah">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-[22px] font-bold">Profil</h2>
+            <div class="flex items-center gap-3">
+                <button class="tombol w-8 h-8 rounded-full bg-[#2a2a30] flex items-center justify-center">🌙</button>
+                <span class="text-sm font-medium">247</span>
+                <span class="text-sm font-medium text-[#86efac]">Rp <span id="saldoProfilAtas">0</span></span>
+                <button class="tombol w-7 h-7 rounded bg-[#2a2a30] flex items-center justify-center">💳</button>
+            </div>
+        </div>
+        <div class="kartu-profil">
+            <div class="pola-latar"></div>
+            <div class="foto-profil" id="inisialProfil">I</div>
+            <h2 class="nama-profil" id="namaProfil">Pengguna</h2>
+            <div class="baris-saldo">
+                <div class="kotak-saldo">
+                    <div class="nilai-saldo" id="saldoProfil">Rp 0</div>
+                    <div class="label-saldo">Saldo Utama</div>
+                </div>
+                <div class="kotak-saldo">
+                    <div class="nilai-vip">0.000</div>
+                    <div class="label-saldo">Saldo VIP</div>
+                </div>
+            </div>
+            <div class="baris-tombol">
+                <button onclick="bukaModal('deposit')" class="tombol tombol-deposit">+ Deposit</button>
+                <button onclick="bukaModal('tarik')" class="tombol tombol-tarik">↑ Tarik Saldo</button>
+            </div>
+            <button onclick="bukaHalaman('halamanRiwayat')" class="w-full py-2.5 rounded-lg bg-[#2a2a30] text-sm tombol mt-4">📋 Lihat Semua Riwayat</button>
+            <button onclick="bukaWaAdmin()" class="w-full py-2.5 rounded-lg tombol tombol-wa text-white font-bold text-sm mt-3">📞 Hubungi Admin WA</button>
+        </div>
+        <button id="tombolAdmin" class="w-full py-3 rounded-lg bg-[#F5B700] text-black font-bold text-sm tombol mt-6 mb-4">🔑 PANEL ADMIN</button>
+        <h3 class="judul-riwayat text-[#86efac]">⬇ Riwayat Deposit</h3>
+        <div id="riwayatDepoProfil" class="mb-6"></div>
+        <h3 class="judul-riwayat text-[#93c5fd]">⬆ Riwayat Penarikan</h3>
+        <div id="riwayatTarikProfil" class="mb-6"><p class="text-center text-gray-500 text-sm py-3">Belum ada penarikan</p></div>
+    </div>
+</section>
+
+<!-- HALAMAN ADMIN -->
+<section id="halamanAdmin" class="halaman">
+    <div class="wadah">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-xl font-bold">🔐 Panel Admin</h2>
+            <button onclick="bukaHalaman('halamanProfil')" class="tombol px-3 py-2 rounded-lg bg-[#2a2a30] text-sm">Kembali</button>
+        </div>
+        <div class="p-3 rounded-lg bg-[#1e1e24] border border-[#2a2a30] mb-4">
+            <h3 class="font-semibold mb-2">Isi Saldo Manual</h3>
+            <div class="grid grid-cols-[1fr_auto] gap-2">
+                <input type="text" id="idIsiSaldo" placeholder="ID / No HP Pengguna" class="kotak-input">
+                <input type="number" id="jmlIsiSaldo" placeholder="Rp" min="100" class="w-[100px] kotak-input">
+                <button onclick="isiSaldoAdmin()" class="col-span-2 py-2 rounded-lg bg-[#F5B700] text-black font-semibold tombol">Tambah Saldo</button>
+            </div>
+        </div>
+        <div class="p-3 rounded-lg bg-[#1e1e24] border border-[#2a2a30] mb-4">
+            <h3 class="font-semibold mb-2">Konfirmasi Transaksi Menunggu</h3>
+            <div class="space-y-2 text-sm" id="daftarTransaksiPending"></div>
+        </div>
+    </div>
+</section>
+
+<!-- MODAL TARUHAN -->
+<div id="modalTaruhan" class="modal">
+    <div class="modal-kotak">
+        <h3 class="text-lg font-bold mb-3">Pasang Taruhan</h3>
+        <div class="mb-3">
+            <label class="text-sm text-gray-400 mb-1 block">Nominal (Min. Rp 2.000)</label>
+            <input type="number" id="nilaiTaruhan" value="2000" min="2000" class="kotak-input">
+        </div>
+        <div class="mb-4">
+            <label class="flex items-center gap-2 mb-1">
+                <input type="checkbox" id="aktifTarikOtomatis">
+                <span class="text-sm">Ambil otomatis di angka</span>
+            </label>
+            <input type="number" id="nilaiTarikOtomatis" value="2.00" step="0.01" min="1.01" class="kotak-input">
+        </div>
+        <div class="flex gap-2">
+            <button onclick="tutupSemuaModal()" class="tombol flex-1 py-2.5 rounded-lg bg-[#2a2a30]">Batal</button>
+            <button onclick="pasangTaruhan()" class="tombol flex-1 py-2.5 rounded-lg bg-[#F5B700] text-black font-semibold">Pasang</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DEPOSIT -->
+<div id="modalDeposit" class="modal">
+    <div class="modal-kotak">
+        <h3 class="text-lg font-bold mb-3">Pilih Cara Deposit</h3>
+        <div class="tab-pilihan">
+            <button id="tabManual" class="aktif" onclick="gantiTab('manual')">Transfer Bank</button>
+            <button id="tabQris" onclick="gantiTab('qris')">QRIS Instan</button>
+        </div>
+        <div id="kontenManual" class="p-3 rounded bg-[#121214] text-sm leading-relaxed mb-4 border border-[#2a2a30]">
+            <p>Transfer ke rekening di bawah ini:</p>
+            <p class="mt-2">🏦 SeaBank</p>
+            <p>💳 No. Rekening: 901087536850</p>
+            <p>👤 Atas Nama: NAW xxx</p>
+            <div class="mt-4">
+                <label class="text-sm text-gray-400 mb-1 block">Nominal Deposit (Min Rp 10.000)</label>
+                <input type="number" id="nominalDepositManual" value="10000" min="10000" class="kotak-input mb-3">
+            </div>
+            <button onclick="konfirmasiBayarBank()" class="block w-full py-2.5 rounded-lg bg-[#22C55E] text-white text-center font-semibold tombol">✅ Konfirmasi Pembayaran</button>
+        </div>
+        <div id="kontenQris" class="p-3 rounded bg-[#121214] text-sm leading-relaxed mb-4 border border-[#2a2a30] hidden">
+            <div class="mb-3">
+                <label class="text-sm text-gray-400 mb-1 block">Masukkan Nominal (Min Rp 10.000)</label>
+                <input type="number" id="nominalDepositQris" value="10000" min="10000" class="kotak-input mb-3">
+            </div>
+            <button onclick="buatKodeQris()" class="w-full py-2.5 rounded-lg bg-[#F5B700] text-black font-semibold tombol mb-4">🧾 Buat Kode QRIS</button>
+            <div id="areaQris" class="area-qr">
+                <p class="text-base font-semibold mb-2">Total Bayar: IDR <span id="nominalTampilQris">0</span></p>
+                <p class="text-sm mb-1">Username: <span id="namaPenggunaQris">-</span></p>
+                <p class="text-sm mb-3">Berlaku Hingga: <span id="waktuBerlakuQris">-</span></p>
+                <canvas id="kodeQris" class="mx-auto bg-white p-2 rounded"></canvas>
+                <button id="tombolKonfirmQris" onclick="konfirmasiBayarQris()" class="w-full py-2.5 rounded-lg bg-[#22C55E] text-white font-semibold tombol mt-4" style="display:none;">✅ Konfirmasi Pembayaran</button>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-2">
+            <button onclick="tutupSemuaModal()" class="tombol w-full py-2.5 rounded-lg bg-[#2a2a30]">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TARIK SALDO -->
+<div id="modalTarik" class="modal">
+    <div class="modal-kotak">
+        <h3 class="text-lg font-bold mb-3">Tarik Saldo</h3>
+        <div class="mb-3">
+            <label class="text-sm text-gray-400 mb-1 block">Bank / E-Wallet</label>
+            <select id="bankTarik" class="kotak-input">
+                <option value="SeaBank">SeaBank</option>
+                <option value="BCA">BCA</option>
+                <option value="BRI">BRI</option>
+                <option value="BNI">BNI</option>
+                <option value="Mandiri">Mandiri</option>
+                <option value="DANA">DANA</option>
+                <option value="OVO">OVO</option>
+                <option value="GoPay">GoPay</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="text-sm text-gray-400 mb-1 block">Nomor Rekening / HP</label>
+            <input type="text" id="noRekTarik" placeholder="Contoh: 901087536850" class="kotak-input" required>
+        </div>
+        <div class="mb-4">
+            <label class="text-sm text-gray-400 mb-1 block">Nama Pemilik Rekening</label>
+            <input type="text" id="namaRekTarik" placeholder="Sesuai rekening" class="kotak-input" required>
+        </div>
+        <div class="mb-3">
+            <label class="text-sm text-gray-400 mb-1 block">Jumlah (Min Rp 50.000 - Maks Rp 7.000.000)</label>
+            <input type="number" id="jmlTarik" value="50000" min="50000" max="7000000" class="kotak-input">
+            <p class="text-xs text-gray-400 mt-1">Biaya admin 10% otomatis dipotong</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="tutupSemuaModal()" class="tombol flex-1 py-2.5 rounded-lg bg-[#2a2a30]">Batal</button>
+            <button onclick="ajukanPenarikan()" class="tombol flex-1 py-2.5 rounded-lg bg-[#3B82F6] text-white font-semibold">Ajukan</button>
+        </div>
+    </div>
+</div>
+
+<!-- NAVIGASI BAWAH -->
+<div class="fixed bottom-0 left-0 right-0 bg-[#1e1e24] border-t border-[#2a2a30] flex justify-around py-2 px-1 z-10">
+    <button onclick="bukaHalaman('halamanUtama')" class="tombol flex flex-col items-center gap-1 text-xs text-white font-bold">
+        <span class="text-lg">🎮</span>
+        <span>GAME</span>
+    </button>
+    <button onclick="bukaHalaman('halamanRiwayat')" class="tombol flex flex-col items-center gap-1 text-xs text-gray-400 hover:text-white">
+        <span class="text-lg">📜</span>
+        <span>RIWAYAT</span>
+    </button>
+    <button onclick="bukaHalaman('halamanProfil')" class="tombol flex flex-col items-center gap-1 text-xs text-gray-400 hover:text-white">
+        <span class="text-lg">👤</span>
+        <span>PROFIL</span>
+    </button>
+</div>
+<div class="h-[60px]"></div>
+
+<script>
+// Konfigurasi Utama
+const ADMIN_WA = "6283832667322";
+const TELEGRAM_ADMIN = "https://t.me/IDNyy2";
+const SANDI_ADMIN = "120208";
+const BATAS_RUGI = 55000;
+const BATAS_SALDO = 40000;
+const MAKS_BAWAH = 380;
+const MIN_TARUHAN = 2000;
+const MIN_DEPOSIT = 10000;
+const BIAYA_ADMIN_TARIK = 10;
+const MIN_TARIK = 50000;
+const MAKS_TARIK = 7000000;
+const JAM_BUKA = 10;
+const JAM_TUTUP = 19;
+const KODE_QRIS_TETAP = "00020101021126600014COM.GO-JEK.WWW011893600003031678951020216789510303UMI51440014ID.CO.QRIS.WWW0215ID1024118223240303UMI520458125303360540610000.005802ID5916PT MIDTRANS FIN5013JAKARTA PUSAT5105103405802ID63040000";
+const NAMA_PEMAIN = ["Rian_89", "Sari_22", "BudiJaya", "DinaWin", "EkoPro", "LuckyBoy", "MegaMenang", "AndiCuan", "KikiJitu", "LinaHoki"];
+
+// Data Penyimpanan
+let semuaPengguna = JSON.parse(localStorage.getItem('semuaPengguna')) || {};
+let akunAktif = null;
+let rondeSedangJalan = false;
+let taruhanSaya = null;
+let kaliPengali = 1.00;
+let titikMeledak = 0;
+let riwayatPengali = [];
+let daftarPemainLain = [];
+let totalKerugian = 0;
+let waktuMunculUlang = null;
+
+// --- BANTUAN & DUKUNGAN ---
+function cekStatusOperasional() {
+    const jamSekarang = new Date().getHours();
+    const aktif = jamSekarang >= JAM_BUKA && jamSekarang < JAM_TUTUP;
+    
+    const elStatusKotak = document.getElementById('statusKotak');
+    const elStatusTim = document.getElementById('statusTim');
+    const elPesanJadwal = document.getElementById('pesanJadwal');
+    const elLabelStatus = document.querySelectorAll('.label-status');
+
+if (aktif) {
+    elStatusKotak.className = 'status-kotak status-online';
+    elStatusKotak.innerHTML = `<span>⚡</span><div><p style="margin:0; font-weight:600;">SEDANG ONLINE</p><p style="margin:4px 0 0; font-size:12px;">Tim dukungan siap membantu Anda. Balasan cepat biasanya dalam 5–10 menit.</p></div>`;
+    elStatusTim.className = 'label-status label-online';
+    elStatusTim.textContent = 'ONLINE';
+    elPesanJadwal.innerHTML = `<span>⚡</span> Kami sedang online! Pesan akan dibalas segera.`;
+    elLabelStatus.forEach(l => { l.className = 'label-status label-online'; l.textContent = 'ONLINE'; });
+} else {
+    elStatusKotak.className = 'status-kotak status-offline';
+    elStatusKotak.innerHTML = `<span>🌙</span><div><p style="margin:0; font-weight:600;">DI LUAR JAM OPERASIONAL</p><p style="margin:4px 0 0; font-size:12px;">Tim kami akan kembali aktif pukul 10:00 WIB. Silakan tinggalkan pesan, akan kami balas saat jam buka.</p></div>`;
+    elStatusTim.className = 'label-status label-offline';
+    elStatusTim.textContent = 'OFFLINE';
+    elPesanJadwal.innerHTML = `<span>🌙</span> Saat ini di luar jam operasional. Pesan Anda akan dibalas pukul 10:00 WIB.`;
+    elLabelStatus.forEach(l => { l.className = 'label-status label-offline'; l.textContent = 'OFFLINE'; });
+}
+}
+
+function bukaTelegramAdmin() { window.open(TELEGRAM_ADMIN, '_blank'); }
+function bukaWaAdmin() { window.open('https://wa.me/' + ADMIN_WA, '_blank'); }
+
+function bukaPanelBantuan() {
+    cekStatusOperasional();
+    document.getElementById('panelBantuan').classList.add('buka');
+    if (waktuMunculUlang) clearTimeout(waktuMunculUlang);
+}
+function tutupPanelBantuan() {
+    document.getElementById('panelBantuan').classList.remove('buka');
+    waktuMunculUlang = setTimeout(() => {
+        document.getElementById('tombolBantuan').classList.remove('sembunyi');
+    }, 10 * 60 * 1000);
+}
+
+// Geser tombol bantuan
+const tombolBantuan = document.getElementById('tombolBantuan');
+let geserAktif = false, posisiAwalX, posisiAwalY, awalX, awalY;
+tombolBantuan.addEventListener('mousedown', e => {
+    geserAktif = true;
+    posisiAwalX = e.clientX; posisiAwalY = e.clientY;
+    awalX = tombolBantuan.offsetLeft; awalY = tombolBantuan.offsetTop;
+});
+document.addEventListener('mousemove', e => {
+    if (!geserAktif) return;
+    tombolBantuan.style.left = `${awalX + (e.clientX - posisiAwalX)}px`;
+    tombolBantuan.style.top = `${awalY + (e.clientY - posisiAwalY)}px`;
+    tombolBantuan.style.right = 'auto';
+});
+document.addEventListener('mouseup', () => geserAktif = false);
+tombolBantuan.addEventListener('touchstart', e => {
+    geserAktif = true;
+    const t = e.touches[0];
+    posisiAwalX = t.clientX; posisiAwalY = t.clientY;
+    awalX = tombolBantuan.offsetLeft; awalY = tombolBantuan.offsetTop;
+    e.preventDefault();
+});
+document.addEventListener('touchmove', e => {
+    if (!geserAktif) return;
+    const t = e.touches[0];
+    tombolBantuan.style.left = `${awalX + (t.clientX - posisiAwalX)}px`;
+    tombolBantuan.style.top = `${awalY + (t.clientY - posisiAwalY)}px`;
+    tombolBantuan.style.right = 'auto';
+});
+document.addEventListener('touchend', () => geserAktif = false);
+tombolBantuan.addEventListener('click', bukaPanelBantuan);
+
+setInterval(cekStatusOperasional, 60000);
+
+// --- FUNGSI UTAMA ---
+function simpanData() {
+    localStorage.setItem('semuaPengguna', JSON.stringify(semuaPengguna));
+}
+
+function tampilkanPesan(teks, jenis = 'sukses') {
+    const el = document.createElement('div');
+    el.className = 'notif-taruhan';
+    el.textContent = teks;
+    el.style.background = jenis === 'sukses' ? '#22C55E' : '#EF4444';
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.animation = 'naikHilang 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+function tampilkanHasil(menang, jumlah = 0, kali = 0) {
+    const el = document.createElement('div');
+    el.className = `hasil-notif ${menang ? 'hasil-menang kedip-hijau' : 'hasil-kalah kedip-merah'}`;
+    el.textContent = menang ? `MENANG +Rp ${jumlah.toLocaleString()} (${kali.toFixed(2)}x)` : `KALAH -Rp ${taruhanSaya.nominal.toLocaleString()}`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+}
+
+function tampilkanFormDaftar() {
+    document.getElementById('formMasuk').style.display = 'none';
+    document.getElementById('formDaftar').style.display = 'block';
+    document.getElementById('pesanErrorMasuk').textContent = '';
+}
+function tampilkanFormMasuk() {
+    document.getElementById('formDaftar').style.display = 'none';
+    document.getElementById('formMasuk').style.display = 'block';
+    document.getElementById('pesanErrorDaftar').textContent = '';
+}
+
+function daftarAkun() {
+    const noHp = document.getElementById('noHpDaftar').value.trim();
+    const nama = document.getElementById('namaUserDaftar').value.trim();
+    const pesan = document.getElementById('pesanErrorDaftar');
+    if (!noHp || noHp.length < 10) return pesan.textContent = 'Nomor HP tidak valid!';
+    if (!nama) return pesan.textContent = 'Nama lengkap wajib diisi!';
+    if (semuaPengguna[noHp]) return pesan.textContent = 'Nomor HP sudah terdaftar!';
+    semuaPengguna[noHp] = { nama, saldo: 0, riwayatDeposit: [], riwayatPenarikan: [], riwayatTaruhan: [] };
+    simpanData();
+    pesan.textContent = 'Pendaftaran berhasil! Silakan masuk.';
+    pesan.style.color = '#22C55E';
+    tampilkanFormMasuk();
+}
+
+function masukAkun() {
+    const noHp = document.getElementById('noHpMasuk').value.trim();
+    const pesan = document.getElementById('pesanErrorMasuk');
+    if (!semuaPengguna[noHp]) return pesan.textContent = 'Nomor HP belum terdaftar!';
+    akunAktif = semuaPengguna[noHp];
+    document.getElementById('layarMasuk').classList.add('sembunyi');
+    perbaruiTampilanAkun();
+    tampilkanPesan(`Selamat datang, ${akunAktif.nama}!`);
+}
+
+function perbaruiTampilanAkun() {
+    document.getElementById('namaTampil').textContent = akunAktif.nama;
+    document.getElementById('saldoTampil').textContent = akunAktif.saldo.toLocaleString();
+    document.getElementById('saldoProfil').textContent = `Rp ${akunAktif.saldo.toLocaleString()}`;
+    document.getElementById('saldoProfilAtas').textContent = akunAktif.saldo.toLocaleString();
+    document.getElementById('namaProfil').textContent = akunAktif.nama;
+    document.getElementById('inisialProfil').textContent = akunAktif.nama.charAt(0).toUpperCase();
+}
+
+function bukaHalaman(id) {
+    document.querySelectorAll('.halaman').forEach(el => el.classList.remove('aktif'));
+    document.getElementById(id).classList.add('aktif');
+}
+
+function bukaModal(jenis) {
+    tutupSemuaModal();
+    if (jenis === 'deposit') document.getElementById('modalDeposit').classList.add('buka');
+    if (jenis === 'tarik') document.getElementById('modalTarik').classList.add('buka');
+}
+function tutupSemuaModal() {
+    document.querySelectorAll('.modal').forEach(el => el.classList.remove('buka'));
+}
+
+function gantiTab(jenis) {
+    if (jenis === 'manual') {
+        document.getElementById('tabManual').classList.add('aktif');
+        document.getElementById('tabQris').classList.remove('aktif');
+        document.getElementById('kontenManual').classList.remove('hidden');
+        document.getElementById('kontenQris').classList.add('hidden');
+    } else {
+        document.getElementById('tabManual').classList.remove('aktif');
+        document.getElementById('tabQris').classList.add('aktif');
+        document.getElementById('kontenManual').classList.add('hidden');
+        document.getElementById('kontenQris').classList.remove('hidden');
+    }
+}
+
+function buatKodeQris() {
+    const nominal = parseInt(document.getElementById('nominalDepositQris').value);
+    if (nominal < MIN_DEPOSIT) return tampilkanPesan(`Minimal deposit Rp ${MIN_DEPOSIT.toLocaleString()}`, 'gagal');
+    const waktu = new Date(); waktu.setMinutes(waktu.getMinutes() + 15);
+    const waktuStr = waktu.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('nominalTampilQris').textContent = nominal.toLocaleString();
+    document.getElementById('namaPenggunaQris').textContent = akunAktif.nama;
+    document.getElementById('waktuBerlakuQris').textContent = waktuStr;
+    document.getElementById('areaQris').classList.add('terbuka');
+    document.getElementById('tombolKonfirmQris').style.display = 'block';
+    QRCode.toCanvas(document.getElementById('kodeQris'), KODE_QRIS_TETAP.replace('10000.00', nominal.toFixed(2)), {width:200});
+}
+
+function konfirmasiBayarQris() {
+    const nominal = parseInt(document.getElementById('nominalDepositQris').value);
+    akunAktif.saldo += nominal;
+    akunAktif.riwayatDeposit.unshift({nominal, waktu: new Date().toLocaleString('id-ID'), status:'Berhasil', metode:'QRIS'});
+    simpanData(); perbaruiTampilanAkun(); tutupSemuaModal();
+    tampilkanPesan(`Deposit Rp ${nominal.toLocaleString()} berhasil! Saldo sudah masuk.`);
+}
+
+function konfirmasiBayarBank() {
+    const nominal = parseInt(document.getElementById('nominalDepositManual').value);
+    if (nominal < MIN_DEPOSIT) return tampilkanPesan(`Minimal deposit Rp ${MIN_DEPOSIT.toLocaleString()}`, 'gagal');
+    akunAktif.saldo += nominal;
+    akunAktif.riwayatDeposit.unshift({nominal, waktu: new Date().toLocaleString('id-ID'), status:'Berhasil', metode:'Transfer Bank'});
+    simpanData(); perbaruiTampilanAkun(); tutupSemuaModal();
+    tampilkanPesan(`Deposit Rp ${nominal.toLocaleString()} berhasil! Saldo sudah masuk.`);
+}
+
+function ajukanPenarikan() {
+    const jumlah = parseInt(document.getElementById('jmlTarik').value);
+    const bank = document.getElementById('bankTarik').value;
+    const noRek = document.getElementById('noRekTarik').value.trim();
+    const namaRek = document.getElementById('namaRekTarik').value.trim();
+    if (!noRek || !namaRek) return tampilkanPesan('Isi semua data rekening!', 'gagal');
+    if (jumlah < MIN_TARIK || jumlah > MAKS_TARIK) return tampilkanPesan(`Jumlah harus Rp ${MIN_TARIK.toLocaleString()} - Rp ${MAKS_TARIK.toLocaleString()}`, 'gagal');
+    if (jumlah > akunAktif.saldo) return tampilkanPesan('Saldo tidak cukup!', 'gagal');
+    const potongAdmin = Math.floor(jumlah * BIAYA_ADMIN_TARIK / 100);
+    const diterima = jumlah - potongAdmin;
+    akunAktif.saldo -= jumlah;
+    akunAktif.riwayatPenarikan.unshift({jumlah, diterima, potongAdmin, bank, noRek, namaRek, waktu: new Date().toLocaleString('id-ID'), status:'Menunggu Konfirmasi'});
+    simpanData(); perbaruiTampilanAkun(); tutupSemuaModal();
+    tampilkanPesan(`Penarikan diajukan! Diterima: Rp ${diterima.toLocaleString()} (potong admin 10%)`);
+}
+
+function bukaModalTaruhan() {
+    if (akunAktif.saldo < MIN_TARUHAN) return tampilkanPesan('Saldo tidak cukup! Minimal Rp 2.000', 'gagal');
+    document.getElementById('modalTaruhan').classList.add('buka');
+}
+
+function pasangTaruhan() {
+    const nominal = parseInt(document.getElementById('nilaiTaruhan').value);
+    const tarikOtomatis = document.getElementById('aktifTarikOtomatis').checked;
+    const nilaiOtomatis = parseFloat(document.getElementById('nilaiTarikOtomatis').value);
+    if (nominal < MIN_TARUHAN) return tampilkanPesan('Minimal taruhan Rp 2.000', 'gagal');
+    if (nominal > akunAktif.saldo) return tampilkanPesan('Saldo tidak cukup!', 'gagal');
+    akunAktif.saldo -= nominal;
+    simpanData(); perbaruiTampilanAkun();
+    taruhanSaya = { nominal, tarikOtomatis, nilaiOtomatis, status: 'berjalan' };
+    tutupSemuaModal(); tampilkanPesan('Taruhan berhasil dipasang!');
+    mulaiRonde();
+}
+
+function mulaiRonde() {
+    if (rondeSedangJalan) return;
+    rondeSedangJalan = true;
+    kaliPengali = 1.00;
+    titikMeledak = hitungTitikMeledak();
+    daftarPemainLain = NAMA_PEMAIN.sort(() => 0.5 - Math.random()).slice(0, 4).map(nama => ({ nama, taruhan: Math.floor(Math.random() * 50000) + 2000 }));
+    perbaruiTampilanRonde(); hitungMundur();
+}
+
+function hitungTitikMeledak() {
+    const acak = Math.random();
+    if (acak < 0.5) return 1 + Math.random() * 1.5;
+    if (acak < 0.8) return 2.5 + Math.random() * 3;
+    if (acak < 0.95) return 5.5 + Math.random() * 10;
+    return 15 + Math.random() * 35;
+}
+
+function hitungMundur(detik = 7) {
+    const elAngka = document.getElementById('angkaHitung');
+    const elArea = document.getElementById('areaHitung');
+    elArea.style.display = 'flex';
+    let n = detik;
+    const timer = setInterval(() => {
+        elAngka.textContent = n--;
+        if (n < 0) { clearInterval(timer); elArea.style.display = 'none'; jalankanRoket(); }
+    }, 1000);
+}
+
+function jalankanRoket() {
+    const elRoket = document.getElementById('roket');
+    const elAngka = document.getElementById('angkaPengali');
+    const elLedak = document.getElementById('ledak');
+    const tombolAmbil = document.getElementById('tombolAmbil');
+    const tombolPasang = document.getElementById('tombolPasang');
+    elLedak.style.display = 'none';
+    tombolAmbil.style.display = taruhanSaya ? 'block' : 'none';
+    tombolPasang.disabled = true;
+    const kecepatan = 30;
+    const naik = setInterval(() => {
+        kaliPengali += 0.01;
+        elAngka.textContent = kaliPengali.toFixed(2) + 'x';
+        elRoket.style.transform = `translateX(-50%) translateY(-${Math.min(kaliPengali * 12, MAKS_BAWAH)}px)`;
+        if (taruhanSaya && taruhanSaya.tarikOtomatis && kaliPengali >= taruhanSaya.nilaiOtomatis) ambilKemenangan();
+        if (kaliPengali >= titikMeledak) {
+            clearInterval(naik);
+            elLedak.style.display = 'block';
+            elRoket.style.opacity = '0';
+            tombolAmbil.style.display = 'none';
+            tombolPasang.disabled = false;
+            rondeSedangJalan = false;
+            if (taruhanSaya && taruhanSaya.status === 'berjalan') {
+                totalKerugian += taruhanSaya.nominal;
+                tampilkanHasil(false);
+                taruhanSaya = null;
+            }
+            riwayatPengali.unshift(titikMeledak);
+            if (riwayatPengali.length > 10) riwayatPengali.pop();
+            perbaruiTampilanRonde();
+            setTimeout(() => { elRoket.style.opacity = '1'; elRoket.style.transform = 'translateX(-50%) translateY(0px)'; }, 1500);
+        }
+    }, kecepatan);
+}
+
+function ambilKemenangan() {
+    if (!taruhanSaya || taruhanSaya.status !== 'berjalan') return;
+    const jumlahMenang = Math.floor(taruhanSaya.nominal * kaliPengali);
+    akunAktif.saldo += jumlahMenang;
+    akunAktif.riwayatTaruhan.unshift({ nominal: taruhanSaya.nominal, kali: kaliPengali, menang: jumlahMenang, waktu: new Date().toLocaleString('id-ID') });
+    simpanData(); perbaruiTampilanAkun();
+    tampilkanHasil(true, jumlahMenang, kaliPengali);
+    taruhanSaya.status = 'selesai';
+    document.getElementById('tombolAmbil').style.display = 'none';
+}
+
+function perbaruiTampilanRonde() {
+    const elRiwayat = document.getElementById('riwayatPengali');
+    elRiwayat.innerHTML = '';
+    riwayatPengali.forEach(k => {
+        const span = document.createElement('span');
+        span.textContent = k.toFixed(2) + 'x';
+        span.className = k < 2 ? 'merah' : k < 5 ? 'biru' : 'hijau';
+        elRiwayat.appendChild(span);
+    });
+    const elPemain = document.getElementById('daftarPemainLain');
+    elPemain.innerHTML = '';
+    daftarPemainLain.forEach(p => { const d = document.createElement('div'); d.textContent = `${p.nama}: Rp ${p.taruhan.toLocaleString()}`; elPemain.appendChild(d); });
+    const elSaya = document.getElementById('taruhanSayaList');
+    elSaya.innerHTML = taruhanSaya ? `<div>Taruhan: Rp ${taruhanSaya.nominal.toLocaleString()}</div>` : '<div>Belum pasang taruhan</div>';
+}
+
+// Admin
+document.getElementById('tombolAdmin').addEventListener('click', () => {
+    const sandi = prompt('Masukkan sandi admin:');
+    if (sandi === SANDI_ADMIN) bukaHalaman('halamanAdmin');
+    else tampilkanPesan('Sandi salah!', 'gagal');
+});
+
+function isiSaldoAdmin() {
+    const idPengguna = document.getElementById('idIsiSaldo').value.trim();
+    const jumlah = parseInt(document.getElementById('jmlIsiSaldo').value);
+    if (!semuaPengguna[idPengguna]) return tampilkanPesan('Pengguna tidak ditemukan!', 'gagal');
+    if (!jumlah || jumlah < 100) return tampilkanPesan('Jumlah tidak valid!', 'gagal');
+    semuaPengguna[idPengguna].saldo += jumlah;
+    simpanData();
+    tampilkanPesan(`Berhasil tambah Rp ${jumlah.toLocaleString()} ke akun ${semuaPengguna[idPengguna].nama}`);
+}
+
+// Otomatis mulai ronde
+setInterval(() => { if (!rondeSedangJalan && akunAktif) mulaiRonde(); }, 3000);
+
+// Cek sesi saat buka
+window.onload = function cekSesi() {
+    semuaPengguna = JSON.parse(localStorage.getItem('semuaPengguna')) || {};
+    document.getElementById('tombolMasuk').addEventListener('click', masukAkun);
+    document.getElementById('tombolDaftar').addEventListener('click', daftarAkun);
+};
+</script>
+</body>
+</html>
+
